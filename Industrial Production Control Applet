@@ -1,0 +1,877 @@
+import java.applet.Applet;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.EventObject;
+
+/*
+ * Industrial Production Control Applet
+ * ------------------------------------
+ * Demonstrates:
+ * 1. Multiple machine monitoring
+ * 2. Start, Stop, Pause and Reset controls
+ * 3. Delegation Event Model
+ * 4. Custom MachineEvent and MachineListener
+ * 5. AWT Layout Managers
+ * 6. MenuBar for machine selection, monitoring and reports
+ * 7. Dynamic status updates
+ * 8. Prevention of invalid operations
+ */
+
+/* =========================================================
+ * CUSTOM EVENT CLASS
+ * ========================================================= */
+class MachineEvent extends EventObject {
+
+    private String action;
+    private String status;
+
+    public MachineEvent(Object source, String action, String status) {
+        super(source);
+        this.action = action;
+        this.status = status;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+}
+
+
+/* =========================================================
+ * CUSTOM LISTENER INTERFACE
+ * ========================================================= */
+interface MachineListener {
+
+    void machineStatusChanged(MachineEvent e);
+}
+
+
+/* =========================================================
+ * MACHINE CLASS
+ * ========================================================= */
+class Machine {
+
+    public static final String STOPPED = "STOPPED";
+    public static final String RUNNING = "RUNNING";
+    public static final String PAUSED = "PAUSED";
+
+    private int machineId;
+    private String machineName;
+    private String status;
+
+    private java.util.List<MachineListener> listeners =
+            new java.util.ArrayList<MachineListener>();
+
+    public Machine(int machineId, String machineName) {
+        this.machineId = machineId;
+        this.machineName = machineName;
+        this.status = STOPPED;
+    }
+
+    public int getMachineId() {
+        return machineId;
+    }
+
+    public String getMachineName() {
+        return machineName;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    /* -----------------------------------------
+     * Register listener
+     * ----------------------------------------- */
+    public void addMachineListener(MachineListener listener) {
+        listeners.add(listener);
+    }
+
+    /* -----------------------------------------
+     * Remove listener
+     * ----------------------------------------- */
+    public void removeMachineListener(MachineListener listener) {
+        listeners.remove(listener);
+    }
+
+    /* -----------------------------------------
+     * Fire custom event
+     * ----------------------------------------- */
+    private void fireMachineEvent(String action) {
+
+        MachineEvent event =
+                new MachineEvent(this, action, status);
+
+        for (MachineListener listener : listeners) {
+            listener.machineStatusChanged(event);
+        }
+    }
+
+    /* -----------------------------------------
+     * START MACHINE
+     * ----------------------------------------- */
+    public void start() {
+
+        if (status.equals(RUNNING)) {
+            fireMachineEvent("INVALID: Machine is already running");
+            return;
+        }
+
+        if (status.equals(PAUSED)) {
+            fireMachineEvent("INVALID: Use Stop or Reset before starting");
+            return;
+        }
+
+        status = RUNNING;
+        fireMachineEvent("Machine started");
+    }
+
+    /* -----------------------------------------
+     * STOP MACHINE
+     * ----------------------------------------- */
+    public void stop() {
+
+        if (status.equals(STOPPED)) {
+            fireMachineEvent("INVALID: Machine is already stopped");
+            return;
+        }
+
+        status = STOPPED;
+        fireMachineEvent("Machine stopped");
+    }
+
+    /* -----------------------------------------
+     * PAUSE MACHINE
+     * ----------------------------------------- */
+    public void pause() {
+
+        if (status.equals(STOPPED)) {
+            fireMachineEvent("INVALID: Cannot pause a stopped machine");
+            return;
+        }
+
+        if (status.equals(PAUSED)) {
+            fireMachineEvent("INVALID: Machine is already paused");
+            return;
+        }
+
+        status = PAUSED;
+        fireMachineEvent("Machine paused");
+    }
+
+    /* -----------------------------------------
+     * RESET MACHINE
+     * ----------------------------------------- */
+    public void reset() {
+
+        status = STOPPED;
+        fireMachineEvent("Machine reset");
+    }
+}
+
+
+/* =========================================================
+ * MAIN APPLET CLASS
+ * ========================================================= */
+public class IndustrialProductionControlApplet
+        extends Applet
+        implements ActionListener, MachineListener {
+
+    private static final long serialVersionUID = 1L;
+
+    private Machine[] machines;
+
+    private int selectedMachine = 0;
+
+    private Label selectedLabel;
+    private Label statusLabel;
+
+    private TextArea monitorArea;
+    private TextArea reportArea;
+
+    private Button startButton;
+    private Button stopButton;
+    private Button pauseButton;
+    private Button resetButton;
+
+    private Panel machinePanel;
+
+    private Timer monitoringTimer;
+
+
+    /* =====================================================
+     * APPLET INITIALIZATION
+     * ===================================================== */
+    public void init() {
+
+        setLayout(new BorderLayout(10, 10));
+        setBackground(new Color(235, 240, 245));
+
+        /* ---------------------------------------------
+         * Create machines
+         * --------------------------------------------- */
+        machines = new Machine[4];
+
+        machines[0] = new Machine(1, "Machine 1");
+        machines[1] = new Machine(2, "Machine 2");
+        machines[2] = new Machine(3, "Machine 3");
+        machines[3] = new Machine(4, "Machine 4");
+
+        for (int i = 0; i < machines.length; i++) {
+            machines[i].addMachineListener(this);
+        }
+
+        /* ---------------------------------------------
+         * Create MenuBar
+         * --------------------------------------------- */
+        createMenuBar();
+
+        /* ---------------------------------------------
+         * Create Header
+         * --------------------------------------------- */
+        Panel header = new Panel(new BorderLayout());
+
+        Label title = new Label(
+                "INDUSTRIAL PRODUCTION CONTROL",
+                Label.CENTER);
+
+        title.setFont(new Font("Arial", Font.BOLD, 20));
+        title.setForeground(Color.WHITE);
+
+        header.setBackground(new Color(35, 75, 120));
+        header.add(title, BorderLayout.CENTER);
+
+        add(header, BorderLayout.NORTH);
+
+
+        /* ---------------------------------------------
+         * Create machine selection panel
+         * --------------------------------------------- */
+        machinePanel = new Panel(new GridLayout(4, 1, 5, 5));
+
+        for (int i = 0; i < machines.length; i++) {
+
+            Button machineButton =
+                    new Button(machines[i].getMachineName());
+
+            machineButton.setActionCommand("SELECT_" + i);
+            machineButton.addActionListener(this);
+
+            machinePanel.add(machineButton);
+        }
+
+        Panel leftPanel = new Panel(new BorderLayout(5, 5));
+
+        Label machineTitle =
+                new Label("MACHINE SELECTION", Label.CENTER);
+
+        machineTitle.setFont(
+                new Font("Arial", Font.BOLD, 14));
+
+        leftPanel.add(machineTitle, BorderLayout.NORTH);
+        leftPanel.add(machinePanel, BorderLayout.CENTER);
+
+
+        /* ---------------------------------------------
+         * Create control buttons
+         * --------------------------------------------- */
+        startButton = new Button("START");
+        stopButton = new Button("STOP");
+        pauseButton = new Button("PAUSE");
+        resetButton = new Button("RESET");
+
+        startButton.setActionCommand("START");
+        stopButton.setActionCommand("STOP");
+        pauseButton.setActionCommand("PAUSE");
+        resetButton.setActionCommand("RESET");
+
+        startButton.addActionListener(this);
+        stopButton.addActionListener(this);
+        pauseButton.addActionListener(this);
+        resetButton.addActionListener(this);
+
+        Panel controlPanel = new Panel(
+                new GridLayout(1, 4, 10, 10));
+
+        controlPanel.add(startButton);
+        controlPanel.add(stopButton);
+        controlPanel.add(pauseButton);
+        controlPanel.add(resetButton);
+
+
+        /* ---------------------------------------------
+         * Status display
+         * --------------------------------------------- */
+        Panel statusPanel = new Panel(
+                new GridLayout(2, 1, 5, 5));
+
+        selectedLabel =
+                new Label("Selected Machine: Machine 1");
+
+        selectedLabel.setFont(
+                new Font("Arial", Font.BOLD, 14));
+
+        statusLabel =
+                new Label("Status: STOPPED");
+
+        statusLabel.setFont(
+                new Font("Arial", Font.BOLD, 16));
+
+        statusLabel.setForeground(Color.RED);
+
+        statusPanel.add(selectedLabel);
+        statusPanel.add(statusLabel);
+
+
+        /* ---------------------------------------------
+         * Monitor area
+         * --------------------------------------------- */
+        monitorArea = new TextArea(
+                "",
+                10,
+                50,
+                TextArea.SCROLLBARS_VERTICAL_ONLY);
+
+        monitorArea.setEditable(false);
+
+        monitorArea.append(
+                "=== MACHINE MONITOR ===\n");
+
+        for (int i = 0; i < machines.length; i++) {
+            monitorArea.append(
+                    machines[i].getMachineName()
+                    + " : "
+                    + machines[i].getStatus()
+                    + "\n");
+        }
+
+
+        /* ---------------------------------------------
+         * Report area
+         * --------------------------------------------- */
+        reportArea = new TextArea(
+                "",
+                8,
+                50,
+                TextArea.SCROLLBARS_VERTICAL_ONLY);
+
+        reportArea.setEditable(false);
+
+
+        /* ---------------------------------------------
+         * Center panel
+         * --------------------------------------------- */
+        Panel centerPanel =
+                new Panel(new BorderLayout(5, 5));
+
+        centerPanel.add(statusPanel,
+                BorderLayout.NORTH);
+
+        centerPanel.add(monitorArea,
+                BorderLayout.CENTER);
+
+        centerPanel.add(controlPanel,
+                BorderLayout.SOUTH);
+
+
+        /* ---------------------------------------------
+         * Right panel
+         * --------------------------------------------- */
+        Panel rightPanel =
+                new Panel(new BorderLayout(5, 5));
+
+        Label reportTitle =
+                new Label("PRODUCTION REPORT",
+                        Label.CENTER);
+
+        reportTitle.setFont(
+                new Font("Arial", Font.BOLD, 14));
+
+        rightPanel.add(reportTitle,
+                BorderLayout.NORTH);
+
+        rightPanel.add(reportArea,
+                BorderLayout.CENTER);
+
+
+        /* ---------------------------------------------
+         * Main content
+         * --------------------------------------------- */
+        Panel mainPanel =
+                new Panel(new BorderLayout(10, 10));
+
+        mainPanel.add(leftPanel,
+                BorderLayout.WEST);
+
+        mainPanel.add(centerPanel,
+                BorderLayout.CENTER);
+
+        mainPanel.add(rightPanel,
+                BorderLayout.EAST);
+
+        add(mainPanel, BorderLayout.CENTER);
+
+
+        /* ---------------------------------------------
+         * Start monitoring timer
+         * --------------------------------------------- */
+        monitoringTimer = new Timer(
+                1000,
+                new ActionListener() {
+
+                    public void actionPerformed(
+                            ActionEvent e) {
+
+                        updateMonitor();
+                    }
+                });
+
+        monitoringTimer.start();
+
+        updateControlButtons();
+    }
+
+
+    /* =====================================================
+     * CREATE MENU BAR
+     * ===================================================== */
+    private void createMenuBar() {
+
+        MenuBar menuBar = new MenuBar();
+
+
+        /* ---------------------------------------------
+         * Machine Menu
+         * --------------------------------------------- */
+        Menu machineMenu = new Menu("Machine");
+
+        for (int i = 0; i < machines.length; i++) {
+
+            MenuItem item =
+                    new MenuItem(
+                            machines[i].getMachineName());
+
+            item.setActionCommand(
+                    "SELECT_" + i);
+
+            item.addActionListener(this);
+
+            machineMenu.add(item);
+        }
+
+        machineMenu.addSeparator();
+
+        MenuItem exitItem =
+                new MenuItem("Exit");
+
+        exitItem.setActionCommand("EXIT");
+        exitItem.addActionListener(this);
+
+        machineMenu.add(exitItem);
+
+
+        /* ---------------------------------------------
+         * Monitoring Menu
+         * --------------------------------------------- */
+        Menu monitorMenu =
+                new Menu("Monitoring");
+
+        MenuItem refreshItem =
+                new MenuItem("Refresh Status");
+
+        refreshItem.setActionCommand("REFRESH");
+        refreshItem.addActionListener(this);
+
+        monitorMenu.add(refreshItem);
+
+
+        /* ---------------------------------------------
+         * Report Menu
+         * --------------------------------------------- */
+        Menu reportMenu =
+                new Menu("Report");
+
+        MenuItem generateItem =
+                new MenuItem("Generate Report");
+
+        generateItem.setActionCommand("REPORT");
+        generateItem.addActionListener(this);
+
+        reportMenu.add(generateItem);
+
+
+        menuBar.add(machineMenu);
+        menuBar.add(monitorMenu);
+        menuBar.add(reportMenu);
+
+        setMenuBar(menuBar);
+    }
+
+
+    /* =====================================================
+     * ACTION EVENT HANDLER
+     * Delegation Event Model
+     * ===================================================== */
+    public void actionPerformed(ActionEvent e) {
+
+        String command = e.getActionCommand();
+
+
+        /* ---------------------------------------------
+         * Machine selection
+         * --------------------------------------------- */
+        if (command.startsWith("SELECT_")) {
+
+            int index = Integer.parseInt(
+                    command.substring(7));
+
+            selectedMachine = index;
+
+            updateSelectedMachine();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+         * START
+         * --------------------------------------------- */
+        if (command.equals("START")) {
+
+            machines[selectedMachine].start();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+         * STOP
+         * --------------------------------------------- */
+        if (command.equals("STOP")) {
+
+            machines[selectedMachine].stop();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+         * PAUSE
+         * --------------------------------------------- */
+        if (command.equals("PAUSE")) {
+
+            machines[selectedMachine].pause();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+         * RESET
+         * --------------------------------------------- */
+        if (command.equals("RESET")) {
+
+            machines[selectedMachine].reset();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+         * REFRESH
+         * --------------------------------------------- */
+        if (command.equals("REFRESH")) {
+
+            updateMonitor();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+         * REPORT
+         * --------------------------------------------- */
+        if (command.equals("REPORT")) {
+
+            generateReport();
+
+            return;
+        }
+
+
+        /* ---------------------------------------------
+         * EXIT
+         * --------------------------------------------- */
+        if (command.equals("EXIT")) {
+
+            if (monitoringTimer != null) {
+                monitoringTimer.stop();
+            }
+
+            reportArea.append(
+                    "\nSystem monitoring stopped.");
+
+            return;
+        }
+    }
+
+
+    /* =====================================================
+     * CUSTOM MACHINE EVENT HANDLER
+     * ===================================================== */
+    public void machineStatusChanged(MachineEvent e) {
+
+        Machine machine =
+                (Machine) e.getSource();
+
+        int machineIndex =
+                machine.getMachineId() - 1;
+
+
+        /* ---------------------------------------------
+         * Update selected machine display
+         * --------------------------------------------- */
+        if (machineIndex == selectedMachine) {
+
+            statusLabel.setText(
+                    "Status: "
+                    + machine.getStatus());
+
+            updateStatusColor(
+                    machine.getStatus());
+        }
+
+
+        /* ---------------------------------------------
+         * Display event in monitor
+         * --------------------------------------------- */
+        monitorArea.append(
+                machine.getMachineName()
+                + " -> "
+                + e.getAction()
+                + " | Status: "
+                + e.getStatus()
+                + "\n");
+
+        updateMonitor();
+        updateControlButtons();
+    }
+
+
+    /* =====================================================
+     * UPDATE SELECTED MACHINE
+     * ===================================================== */
+    private void updateSelectedMachine() {
+
+        Machine machine =
+                machines[selectedMachine];
+
+        selectedLabel.setText(
+                "Selected Machine: "
+                + machine.getMachineName());
+
+        statusLabel.setText(
+                "Status: "
+                + machine.getStatus());
+
+        updateStatusColor(
+                machine.getStatus());
+
+        updateControlButtons();
+    }
+
+
+    /* =====================================================
+     * UPDATE STATUS COLOR
+     * ===================================================== */
+    private void updateStatusColor(String status) {
+
+        if (status.equals(Machine.RUNNING)) {
+
+            statusLabel.setForeground(
+                    new Color(0, 150, 0));
+
+        } else if (status.equals(Machine.PAUSED)) {
+
+            statusLabel.setForeground(
+                    new Color(220, 140, 0));
+
+        } else {
+
+            statusLabel.setForeground(
+                    Color.RED);
+        }
+    }
+
+
+    /* =====================================================
+     * ENABLE / DISABLE CONTROL BUTTONS
+     * ===================================================== */
+    private void updateControlButtons() {
+
+        String status =
+                machines[selectedMachine].getStatus();
+
+
+        if (status.equals(Machine.STOPPED)) {
+
+            startButton.setEnabled(true);
+            stopButton.setEnabled(false);
+            pauseButton.setEnabled(false);
+            resetButton.setEnabled(true);
+
+        } else if (status.equals(Machine.RUNNING)) {
+
+            startButton.setEnabled(false);
+            stopButton.setEnabled(true);
+            pauseButton.setEnabled(true);
+            resetButton.setEnabled(true);
+
+        } else if (status.equals(Machine.PAUSED)) {
+
+            startButton.setEnabled(false);
+            stopButton.setEnabled(true);
+            pauseButton.setEnabled(false);
+            resetButton.setEnabled(true);
+        }
+    }
+
+
+    /* =====================================================
+     * UPDATE MACHINE MONITOR
+     * ===================================================== */
+    private void updateMonitor() {
+
+        StringBuilder text =
+                new StringBuilder();
+
+        text.append(
+                "=== MACHINE MONITOR ===\n\n");
+
+        for (int i = 0; i < machines.length; i++) {
+
+            text.append(
+                    machines[i].getMachineName())
+                .append(" : ")
+                .append(
+                    machines[i].getStatus())
+                .append("\n");
+        }
+
+        text.append(
+                "\nSelected: ")
+            .append(
+                machines[selectedMachine]
+                .getMachineName());
+
+        monitorArea.setText(text.toString());
+    }
+
+
+    /* =====================================================
+     * GENERATE PRODUCTION REPORT
+     * ===================================================== */
+    private void generateReport() {
+
+        int running = 0;
+        int stopped = 0;
+        int paused = 0;
+
+        for (int i = 0; i < machines.length; i++) {
+
+            if (machines[i].getStatus()
+                    .equals(Machine.RUNNING)) {
+
+                running++;
+
+            } else if (machines[i].getStatus()
+                    .equals(Machine.PAUSED)) {
+
+                paused++;
+
+            } else {
+
+                stopped++;
+            }
+        }
+
+
+        StringBuilder report =
+                new StringBuilder();
+
+        report.append(
+                "===== PRODUCTION REPORT =====\n\n");
+
+        report.append(
+                "Total Machines : ")
+              .append(machines.length)
+              .append("\n");
+
+        report.append(
+                "Running        : ")
+              .append(running)
+              .append("\n");
+
+        report.append(
+                "Paused         : ")
+              .append(paused)
+              .append("\n");
+
+        report.append(
+                "Stopped        : ")
+              .append(stopped)
+              .append("\n\n");
+
+
+        for (int i = 0; i < machines.length; i++) {
+
+            report.append(
+                    machines[i].getMachineName())
+                  .append(" : ")
+                  .append(
+                    machines[i].getStatus())
+                  .append("\n");
+        }
+
+
+        report.append(
+                "\n=============================");
+
+        reportArea.setText(
+                report.toString());
+    }
+
+
+    /* =====================================================
+     * APPLET STOP
+     * ===================================================== */
+    public void stop() {
+
+        if (monitoringTimer != null) {
+            monitoringTimer.stop();
+        }
+
+        super.stop();
+    }
+
+
+    /* =====================================================
+     * APPLET DESTROY
+     * ===================================================== */
+    public void destroy() {
+
+        if (monitoringTimer != null) {
+            monitoringTimer.stop();
+        }
+
+        for (int i = 0; i < machines.length; i++) {
+            machines[i].removeMachineListener(this);
+        }
+
+        super.destroy();
+    }
+}
