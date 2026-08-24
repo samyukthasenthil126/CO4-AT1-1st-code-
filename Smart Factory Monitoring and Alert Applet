@@ -1,1 +1,261 @@
+import java.applet.Applet;
+import java.awt.*;
+import java.awt.event.*;
 
+public class SmartFactoryApplet extends Applet implements ActionListener {
+
+    CardLayout cardLayout;
+    Panel cards;
+
+    Label tempLabel, pressureLabel, machineLabel, productionLabel, alertLabel;
+
+    Button normalBtn, warningBtn, emergencyBtn;
+    Button startBtn, stopBtn, increaseBtn, decreaseBtn;
+
+    String mode = "NORMAL";
+    boolean machineRunning = false;
+
+    public void init() {
+
+        setLayout(new BorderLayout());
+
+        // Menu
+        MenuBar menuBar = new MenuBar();
+
+        Menu viewMenu = new Menu("View");
+        MenuItem normalMenu = new MenuItem("Normal");
+        MenuItem warningMenu = new MenuItem("Warning");
+        MenuItem emergencyMenu = new MenuItem("Emergency");
+        MenuItem exitMenu = new MenuItem("Exit");
+
+        viewMenu.add(normalMenu);
+        viewMenu.add(warningMenu);
+        viewMenu.add(emergencyMenu);
+        viewMenu.add(exitMenu);
+
+        menuBar.add(viewMenu);
+
+        // Applet menu is not directly supported in all environments,
+        // so buttons are also provided below.
+
+        // Title
+        Label title = new Label(
+            "SMART FACTORY MONITORING AND ALERT SYSTEM",
+            Label.CENTER
+        );
+        title.setFont(new Font("Arial", Font.BOLD, 20));
+
+        add(title, BorderLayout.NORTH);
+
+        // Cards
+        cardLayout = new CardLayout();
+        cards = new Panel(cardLayout);
+
+        // Normal Panel
+        Panel normalPanel = createNormalPanel();
+
+        // Warning Panel
+        Panel warningPanel = createWarningPanel();
+
+        // Emergency Panel
+        Panel emergencyPanel = createEmergencyPanel();
+
+        cards.add(normalPanel, "NORMAL");
+        cards.add(warningPanel, "WARNING");
+        cards.add(emergencyPanel, "EMERGENCY");
+
+        add(cards, BorderLayout.CENTER);
+
+        // Control Panel
+        Panel controlPanel = new Panel(new GridLayout(2, 4, 5, 5));
+
+        normalBtn = new Button("NORMAL");
+        warningBtn = new Button("WARNING");
+        emergencyBtn = new Button("EMERGENCY");
+
+        startBtn = new Button("START MACHINE");
+        stopBtn = new Button("STOP MACHINE");
+        increaseBtn = new Button("Increase Production");
+        decreaseBtn = new Button("Decrease Production");
+
+        controlPanel.add(normalBtn);
+        controlPanel.add(warningBtn);
+        controlPanel.add(emergencyBtn);
+        controlPanel.add(startBtn);
+
+        controlPanel.add(stopBtn);
+        controlPanel.add(increaseBtn);
+        controlPanel.add(decreaseBtn);
+
+        add(controlPanel, BorderLayout.SOUTH);
+
+        // Event listeners
+        normalBtn.addActionListener(this);
+        warningBtn.addActionListener(this);
+        emergencyBtn.addActionListener(this);
+        startBtn.addActionListener(this);
+        stopBtn.addActionListener(this);
+        increaseBtn.addActionListener(this);
+        decreaseBtn.addActionListener(this);
+
+        normalMenu.addActionListener(this);
+        warningMenu.addActionListener(this);
+        emergencyMenu.addActionListener(this);
+        exitMenu.addActionListener(this);
+
+        // Initial values
+        tempLabel.setText("Temperature: 30 C");
+        pressureLabel.setText("Pressure: 50 PSI");
+        machineLabel.setText("Machine Status: STOPPED");
+        productionLabel.setText("Production Level: 50%");
+        alertLabel.setText("Status: NORMAL");
+    }
+
+    // Normal mode
+    Panel createNormalPanel() {
+
+        Panel panel = new Panel(new BorderLayout());
+
+        Label heading = new Label("NORMAL MONITORING", Label.CENTER);
+        heading.setFont(new Font("Arial", Font.BOLD, 16));
+
+        Panel data = new Panel(new GridLayout(4, 1));
+
+        tempLabel = new Label("Temperature: 30 C");
+        pressureLabel = new Label("Pressure: 50 PSI");
+        machineLabel = new Label("Machine Status: STOPPED");
+        productionLabel = new Label("Production Level: 50%");
+
+        data.add(tempLabel);
+        data.add(pressureLabel);
+        data.add(machineLabel);
+        data.add(productionLabel);
+
+        panel.add(heading, BorderLayout.NORTH);
+        panel.add(data, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    // Warning mode
+    Panel createWarningPanel() {
+
+        Panel panel = new Panel(new BorderLayout());
+
+        Label heading = new Label("WARNING MODE", Label.CENTER);
+        heading.setFont(new Font("Arial", Font.BOLD, 18));
+
+        alertLabel = new Label("Status: WARNING - Check Factory Conditions",
+                Label.CENTER);
+
+        panel.add(heading, BorderLayout.NORTH);
+        panel.add(alertLabel, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    // Emergency mode
+    Panel createEmergencyPanel() {
+
+        Panel panel = new Panel(new BorderLayout());
+
+        Label heading = new Label("EMERGENCY MODE", Label.CENTER);
+        heading.setFont(new Font("Arial", Font.BOLD, 18));
+
+        Label emergency = new Label(
+            "EMERGENCY! MACHINE OPERATIONS LOCKED",
+            Label.CENTER
+        );
+
+        panel.add(heading, BorderLayout.NORTH);
+        panel.add(emergency, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    public void actionPerformed(ActionEvent e) {
+
+        String command = e.getActionCommand();
+
+        // Normal mode
+        if (command.equals("NORMAL")) {
+            mode = "NORMAL";
+            cardLayout.show(cards, "NORMAL");
+            alertLabel.setText("Status: NORMAL");
+        }
+
+        // Warning mode
+        else if (command.equals("WARNING")) {
+            mode = "WARNING";
+            cardLayout.show(cards, "WARNING");
+            alertLabel.setText("Status: WARNING - Check Conditions");
+        }
+
+        // Emergency mode
+        else if (command.equals("EMERGENCY")) {
+            mode = "EMERGENCY";
+            machineRunning = false;
+            machineLabel.setText("Machine Status: STOPPED");
+            cardLayout.show(cards, "EMERGENCY");
+        }
+
+        // Start machine
+        else if (command.equals("START MACHINE")) {
+
+            if (mode.equals("EMERGENCY")) {
+                alertLabel.setText("ALERT: Cannot start machine in Emergency!");
+                return;
+            }
+
+            machineRunning = true;
+            machineLabel.setText("Machine Status: RUNNING");
+        }
+
+        // Stop machine
+        else if (command.equals("STOP MACHINE")) {
+
+            machineRunning = false;
+            machineLabel.setText("Machine Status: STOPPED");
+        }
+
+        // Increase production
+        else if (command.equals("Increase Production")) {
+
+            if (mode.equals("EMERGENCY")) {
+                return;
+            }
+
+            productionLabel.setText("Production Level: 80%");
+        }
+
+        // Decrease production
+        else if (command.equals("Decrease Production")) {
+
+            productionLabel.setText("Production Level: 30%");
+        }
+
+        // Menu actions
+        else if (command.equals("Exit")) {
+            mode = "EMERGENCY";
+            machineRunning = false;
+            machineLabel.setText("Machine Status: STOPPED");
+            cardLayout.show(cards, "EMERGENCY");
+        }
+
+        else if (command.equals("Normal")) {
+            mode = "NORMAL";
+            cardLayout.show(cards, "NORMAL");
+        }
+
+        else if (command.equals("Warning")) {
+            mode = "WARNING";
+            cardLayout.show(cards, "WARNING");
+        }
+
+        else if (command.equals("Emergency")) {
+            mode = "EMERGENCY";
+            machineRunning = false;
+            cardLayout.show(cards, "EMERGENCY");
+        }
+    }
+}
