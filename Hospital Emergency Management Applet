@@ -1,0 +1,856 @@
+import java.applet.Applet;
+import java.awt.*;
+import java.awt.event.*;
+
+/*
+<applet code="HospitalEmergencyManagementApplet.class"
+        width="850" height="650">
+</applet>
+*/
+
+public class HospitalEmergencyManagementApplet extends Applet
+        implements ActionListener, ItemListener {
+
+    // -----------------------------
+    // Patient information controls
+    // -----------------------------
+    TextField patientIdField;
+    TextField patientNameField;
+    TextField ageField;
+    TextField phoneField;
+
+    Choice categoryChoice;
+    Choice doctorChoice;
+
+    TextArea symptomsArea;
+    TextArea treatmentArea;
+    TextArea displayArea;
+
+    Checkbox emergencyConsent;
+    Checkbox ambulanceRequired;
+
+    Button registerButton;
+    Button clearButton;
+    Button menuButton;
+
+    // -----------------------------
+    // Status controls
+    // -----------------------------
+    Label priorityLabel;
+    Label alertLabel;
+    Label statusLabel;
+
+    // -----------------------------
+    // Popup menu
+    // -----------------------------
+    PopupMenu popupMenu;
+    MenuItem clearMenuItem;
+    MenuItem showRecordsMenuItem;
+
+    // -----------------------------
+    // Patient records
+    // -----------------------------
+    String[] patientIds = new String[100];
+    String[] patientRecords = new String[100];
+
+    int patientCount = 0;
+
+    // =========================================================
+    // APPLET INITIALIZATION
+    // =========================================================
+    public void init() {
+
+        setBackground(Color.WHITE);
+        setLayout(new BorderLayout(10, 10));
+
+        // =====================================================
+        // TITLE
+        // =====================================================
+        Label title = new Label(
+                "HOSPITAL EMERGENCY MANAGEMENT SYSTEM",
+                Label.CENTER
+        );
+
+        title.setFont(new Font("Arial", Font.BOLD, 20));
+        title.setForeground(new Color(0, 70, 140));
+
+        add(title, BorderLayout.NORTH);
+
+        // =====================================================
+        // MAIN PANEL
+        // =====================================================
+        Panel mainPanel = new Panel(new GridLayout(1, 2, 10, 10));
+
+        // =====================================================
+        // LEFT PANEL - PATIENT REGISTRATION
+        // =====================================================
+        Panel registrationPanel = new Panel(
+                new GridLayout(10, 2, 8, 8)
+        );
+
+        registrationPanel.setBackground(new Color(240, 248, 255));
+
+        Label registrationTitle = new Label(
+                "PATIENT REGISTRATION",
+                Label.CENTER
+        );
+
+        registrationTitle.setFont(
+                new Font("Arial", Font.BOLD, 16)
+        );
+
+        registrationPanel.add(registrationTitle);
+        registrationPanel.add(new Label(""));
+
+        // Patient ID
+        registrationPanel.add(new Label("Patient ID:"));
+        patientIdField = new TextField();
+        registrationPanel.add(patientIdField);
+
+        // Patient Name
+        registrationPanel.add(new Label("Patient Name:"));
+        patientNameField = new TextField();
+        registrationPanel.add(patientNameField);
+
+        // Age
+        registrationPanel.add(new Label("Age:"));
+        ageField = new TextField();
+        registrationPanel.add(ageField);
+
+        // Phone
+        registrationPanel.add(new Label("Phone:"));
+        phoneField = new TextField();
+        registrationPanel.add(phoneField);
+
+        // Emergency Category
+        registrationPanel.add(new Label("Emergency Category:"));
+
+        categoryChoice = new Choice();
+
+        categoryChoice.add("Select Category");
+        categoryChoice.add("Cardiac");
+        categoryChoice.add("Trauma");
+        categoryChoice.add("Unconscious");
+        categoryChoice.add("Severe Bleeding");
+        categoryChoice.add("Respiratory");
+        categoryChoice.add("Poisoning");
+        categoryChoice.add("Fever");
+        categoryChoice.add("Minor Injury");
+        categoryChoice.add("Other");
+
+        categoryChoice.addItemListener(this);
+
+        registrationPanel.add(categoryChoice);
+
+        // Doctor Selection
+        registrationPanel.add(new Label("Doctor:"));
+
+        doctorChoice = new Choice();
+
+        doctorChoice.add("Select Doctor");
+        doctorChoice.add("Dr. Kumar - Emergency");
+        doctorChoice.add("Dr. Sharma - Cardiology");
+        doctorChoice.add("Dr. Singh - Trauma");
+        doctorChoice.add("Dr. Patel - General Medicine");
+        doctorChoice.add("Dr. Rao - Respiratory");
+
+        registrationPanel.add(doctorChoice);
+
+        // Symptoms
+        registrationPanel.add(new Label("Symptoms:"));
+
+        symptomsArea = new TextArea("", 3, 20);
+        registrationPanel.add(symptomsArea);
+
+        // Treatment
+        registrationPanel.add(new Label("Treatment Required:"));
+
+        treatmentArea = new TextArea("", 3, 20);
+        registrationPanel.add(treatmentArea);
+
+        // Emergency Consent
+        registrationPanel.add(new Label("Emergency Consent:"));
+
+        emergencyConsent = new Checkbox(
+                "Consent Given"
+        );
+
+        registrationPanel.add(emergencyConsent);
+
+        // Ambulance
+        registrationPanel.add(new Label("Ambulance:"));
+
+        ambulanceRequired = new Checkbox(
+                "Required"
+        );
+
+        registrationPanel.add(ambulanceRequired);
+
+        mainPanel.add(registrationPanel);
+
+        // =====================================================
+        // RIGHT PANEL - STATUS / ALERT
+        // =====================================================
+        Panel rightPanel = new Panel(
+                new BorderLayout(8, 8)
+        );
+
+        rightPanel.setBackground(new Color(250, 250, 250));
+
+        Label statusTitle = new Label(
+                "EMERGENCY STATUS",
+                Label.CENTER
+        );
+
+        statusTitle.setFont(
+                new Font("Arial", Font.BOLD, 16)
+        );
+
+        rightPanel.add(statusTitle, BorderLayout.NORTH);
+
+        // -----------------------------------------
+        // Status center
+        // -----------------------------------------
+        Panel statusPanel = new Panel(
+                new GridLayout(5, 1, 5, 5)
+        );
+
+        priorityLabel = new Label(
+                "Priority: NOT ASSIGNED",
+                Label.CENTER
+        );
+
+        priorityLabel.setFont(
+                new Font("Arial", Font.BOLD, 16)
+        );
+
+        priorityLabel.setForeground(Color.GRAY);
+
+        alertLabel = new Label(
+                "ALERT: No critical patient",
+                Label.CENTER
+        );
+
+        alertLabel.setFont(
+                new Font("Arial", Font.BOLD, 14)
+        );
+
+        statusLabel = new Label(
+                "Status: Waiting for registration",
+                Label.CENTER
+        );
+
+        statusPanel.add(priorityLabel);
+        statusPanel.add(alertLabel);
+        statusPanel.add(statusLabel);
+
+        // Display area
+        displayArea = new TextArea(
+                "",
+                12,
+                35,
+                TextArea.SCROLLBARS_VERTICAL_ONLY
+        );
+
+        displayArea.setEditable(false);
+
+        statusPanel.add(displayArea);
+
+        rightPanel.add(statusPanel, BorderLayout.CENTER);
+
+        mainPanel.add(rightPanel);
+
+        add(mainPanel, BorderLayout.CENTER);
+
+        // =====================================================
+        // BOTTOM BUTTON PANEL
+        // =====================================================
+        Panel buttonPanel = new Panel(
+                new FlowLayout(FlowLayout.CENTER, 15, 8)
+        );
+
+        registerButton = new Button("Register Patient");
+        clearButton = new Button("Clear");
+        menuButton = new Button("Menu");
+
+        registerButton.addActionListener(this);
+        clearButton.addActionListener(this);
+        menuButton.addActionListener(this);
+
+        buttonPanel.add(registerButton);
+        buttonPanel.add(clearButton);
+        buttonPanel.add(menuButton);
+
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        // =====================================================
+        // POPUP MENU
+        // =====================================================
+        popupMenu = new PopupMenu("Hospital Menu");
+
+        clearMenuItem = new MenuItem("Clear Form");
+        showRecordsMenuItem = new MenuItem("Show Registered Patients");
+
+        clearMenuItem.addActionListener(this);
+        showRecordsMenuItem.addActionListener(this);
+
+        popupMenu.add(clearMenuItem);
+        popupMenu.addSeparator();
+        popupMenu.add(showRecordsMenuItem);
+
+        add(popupMenu);
+    }
+
+    // =========================================================
+    // ITEM EVENT HANDLING
+    // =========================================================
+    public void itemStateChanged(ItemEvent e) {
+
+        if (e.getSource() == categoryChoice) {
+
+            String category =
+                    categoryChoice.getSelectedItem();
+
+            assignPriority(category);
+
+            // Automatically suggest doctor
+            if (category.equals("Cardiac")) {
+
+                doctorChoice.select(
+                        "Dr. Sharma - Cardiology"
+                );
+
+            } else if (category.equals("Trauma")
+                    || category.equals("Severe Bleeding")) {
+
+                doctorChoice.select(
+                        "Dr. Singh - Trauma"
+                );
+
+            } else if (category.equals("Respiratory")) {
+
+                doctorChoice.select(
+                        "Dr. Rao - Respiratory"
+                );
+
+            } else if (category.equals("Fever")
+                    || category.equals("Minor Injury")
+                    || category.equals("Poisoning")) {
+
+                doctorChoice.select(
+                        "Dr. Patel - General Medicine"
+                );
+            }
+
+            statusLabel.setText(
+                    "Status: Category selected - " + category
+            );
+        }
+    }
+
+    // =========================================================
+    // AUTOMATIC PRIORITY ASSIGNMENT
+    // =========================================================
+    public void assignPriority(String category) {
+
+        if (category.equals("Cardiac")
+                || category.equals("Trauma")
+                || category.equals("Unconscious")
+                || category.equals("Severe Bleeding")) {
+
+            priorityLabel.setText(
+                    "Priority: CRITICAL"
+            );
+
+            priorityLabel.setForeground(Color.RED);
+
+            alertLabel.setText(
+                    "!!! CRITICAL PATIENT ALERT !!!"
+            );
+
+            alertLabel.setForeground(Color.RED);
+
+        } else if (category.equals("Respiratory")
+                || category.equals("Poisoning")) {
+
+            priorityLabel.setText(
+                    "Priority: HIGH"
+            );
+
+            priorityLabel.setForeground(
+                    new Color(255, 140, 0)
+            );
+
+            alertLabel.setText(
+                    "Alert: Immediate attention required"
+            );
+
+            alertLabel.setForeground(
+                    new Color(255, 140, 0)
+            );
+
+        } else if (category.equals("Fever")
+                || category.equals("Minor Injury")) {
+
+            priorityLabel.setText(
+                    "Priority: MEDIUM"
+            );
+
+            priorityLabel.setForeground(Color.BLUE);
+
+            alertLabel.setText(
+                    "Alert: Routine emergency care"
+            );
+
+            alertLabel.setForeground(Color.BLUE);
+
+        } else if (category.equals("Other")) {
+
+            priorityLabel.setText(
+                    "Priority: LOW"
+            );
+
+            priorityLabel.setForeground(
+                    new Color(0, 128, 0)
+            );
+
+            alertLabel.setText(
+                    "Alert: Normal assessment"
+            );
+
+            alertLabel.setForeground(
+                    new Color(0, 128, 0)
+            );
+
+        } else {
+
+            priorityLabel.setText(
+                    "Priority: NOT ASSIGNED"
+            );
+
+            priorityLabel.setForeground(Color.GRAY);
+
+            alertLabel.setText(
+                    "ALERT: Select emergency category"
+            );
+
+            alertLabel.setForeground(Color.GRAY);
+        }
+    }
+
+    // =========================================================
+    // ACTION EVENT HANDLING
+    // =========================================================
+    public void actionPerformed(ActionEvent e) {
+
+        Object source = e.getSource();
+
+        // -----------------------------------------------------
+        // REGISTER PATIENT
+        // -----------------------------------------------------
+        if (source == registerButton) {
+
+            registerPatient();
+
+        }
+
+        // -----------------------------------------------------
+        // CLEAR BUTTON
+        // -----------------------------------------------------
+        else if (source == clearButton) {
+
+            clearForm();
+
+        }
+
+        // -----------------------------------------------------
+        // MENU BUTTON
+        // -----------------------------------------------------
+        else if (source == menuButton) {
+
+            popupMenu.show(
+                    menuButton,
+                    0,
+                    menuButton.getHeight()
+            );
+
+        }
+
+        // -----------------------------------------------------
+        // CLEAR MENU
+        // -----------------------------------------------------
+        else if (source == clearMenuItem) {
+
+            clearForm();
+
+        }
+
+        // -----------------------------------------------------
+        // SHOW RECORDS MENU
+        // -----------------------------------------------------
+        else if (source == showRecordsMenuItem) {
+
+            showRecords();
+
+        }
+    }
+
+    // =========================================================
+    // REGISTER PATIENT
+    // =========================================================
+    public void registerPatient() {
+
+        String patientId =
+                patientIdField.getText().trim();
+
+        String patientName =
+                patientNameField.getText().trim();
+
+        String ageText =
+                ageField.getText().trim();
+
+        String phone =
+                phoneField.getText().trim();
+
+        String category =
+                categoryChoice.getSelectedItem();
+
+        String doctor =
+                doctorChoice.getSelectedItem();
+
+        String symptoms =
+                symptomsArea.getText().trim();
+
+        String treatment =
+                treatmentArea.getText().trim();
+
+        // -----------------------------------------------------
+        // REQUIRED INPUT VALIDATION
+        // -----------------------------------------------------
+        if (patientId.length() == 0) {
+
+            showError("Patient ID is required.");
+            patientIdField.requestFocus();
+            return;
+        }
+
+        if (patientName.length() == 0) {
+
+            showError("Patient name is required.");
+            patientNameField.requestFocus();
+            return;
+        }
+
+        if (ageText.length() == 0) {
+
+            showError("Age is required.");
+            ageField.requestFocus();
+            return;
+        }
+
+        if (phone.length() == 0) {
+
+            showError("Phone number is required.");
+            phoneField.requestFocus();
+            return;
+        }
+
+        if (category.equals("Select Category")) {
+
+            showError("Please select an emergency category.");
+            return;
+        }
+
+        if (doctor.equals("Select Doctor")) {
+
+            showError("Please select a doctor.");
+            return;
+        }
+
+        if (symptoms.length() == 0) {
+
+            showError("Symptoms are required.");
+            symptomsArea.requestFocus();
+            return;
+        }
+
+        if (treatment.length() == 0) {
+
+            showError("Treatment details are required.");
+            treatmentArea.requestFocus();
+            return;
+        }
+
+        // -----------------------------------------------------
+        // EMERGENCY CONSENT VALIDATION
+        // -----------------------------------------------------
+        if (!emergencyConsent.getState()) {
+
+            showError(
+                    "Emergency consent must be given."
+            );
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // AGE VALIDATION
+        // -----------------------------------------------------
+        int age;
+
+        try {
+
+            age = Integer.parseInt(ageText);
+
+        } catch (NumberFormatException ex) {
+
+            showError(
+                    "Invalid age. Enter a valid number."
+            );
+
+            return;
+        }
+
+        if (age <= 0 || age > 120) {
+
+            showError(
+                    "Age must be between 1 and 120."
+            );
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // PHONE VALIDATION
+        // -----------------------------------------------------
+        if (!phone.matches("[0-9]{10}")) {
+
+            showError(
+                    "Phone number must contain exactly 10 digits."
+            );
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // DUPLICATE PATIENT REGISTRATION CHECK
+        // -----------------------------------------------------
+        if (isDuplicatePatient(patientId)) {
+
+            showError(
+                    "Duplicate registration! Patient ID "
+                    + patientId
+                    + " already exists."
+            );
+
+            patientIdField.requestFocus();
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // GET AUTOMATIC PRIORITY
+        // -----------------------------------------------------
+        String priority =
+                getPriority(category);
+
+        // -----------------------------------------------------
+        // CREATE PATIENT RECORD
+        // -----------------------------------------------------
+        String record =
+                "Patient ID       : " + patientId + "\n"
+                + "Patient Name     : " + patientName + "\n"
+                + "Age              : " + age + "\n"
+                + "Phone            : " + phone + "\n"
+                + "Emergency        : " + category + "\n"
+                + "Doctor           : " + doctor + "\n"
+                + "Priority         : " + priority + "\n"
+                + "Symptoms         : " + symptoms + "\n"
+                + "Treatment        : " + treatment + "\n"
+                + "Ambulance        : "
+                + (ambulanceRequired.getState()
+                    ? "Required" : "Not Required")
+                + "\n"
+                + "----------------------------------------\n";
+
+        patientIds[patientCount] = patientId;
+        patientRecords[patientCount] = record;
+
+        patientCount++;
+
+        // -----------------------------------------------------
+        // DISPLAY SUCCESS
+        // -----------------------------------------------------
+        displayArea.setText(record);
+
+        statusLabel.setText(
+                "Status: Patient registered successfully."
+        );
+
+        statusLabel.setForeground(
+                new Color(0, 128, 0)
+        );
+
+        // -----------------------------------------------------
+        // CRITICAL PATIENT ALERT
+        // -----------------------------------------------------
+        if (priority.equals("CRITICAL")) {
+
+            alertLabel.setText(
+                    "!!! CRITICAL PATIENT - IMMEDIATE ATTENTION !!!"
+            );
+
+            alertLabel.setForeground(Color.RED);
+
+            displayArea.append(
+                    "\n*** CRITICAL ALERT ***\n"
+                    + "Immediate emergency treatment required.\n"
+            );
+
+        } else {
+
+            alertLabel.setText(
+                    "Patient registration completed."
+            );
+
+            alertLabel.setForeground(
+                    new Color(0, 128, 0)
+            );
+        }
+    }
+
+    // =========================================================
+    // DUPLICATE PATIENT CHECK
+    // =========================================================
+    public boolean isDuplicatePatient(String id) {
+
+        for (int i = 0; i < patientCount; i++) {
+
+            if (patientIds[i].equalsIgnoreCase(id)) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // =========================================================
+    // GET PRIORITY
+    // =========================================================
+    public String getPriority(String category) {
+
+        if (category.equals("Cardiac")
+                || category.equals("Trauma")
+                || category.equals("Unconscious")
+                || category.equals("Severe Bleeding")) {
+
+            return "CRITICAL";
+
+        } else if (category.equals("Respiratory")
+                || category.equals("Poisoning")) {
+
+            return "HIGH";
+
+        } else if (category.equals("Fever")
+                || category.equals("Minor Injury")) {
+
+            return "MEDIUM";
+
+        } else {
+
+            return "LOW";
+        }
+    }
+
+    // =========================================================
+    // SHOW ALL REGISTERED PATIENTS
+    // =========================================================
+    public void showRecords() {
+
+        if (patientCount == 0) {
+
+            displayArea.setText(
+                    "No patients registered yet."
+            );
+
+            return;
+        }
+
+        String output =
+                "===== REGISTERED PATIENTS =====\n\n";
+
+        for (int i = 0; i < patientCount; i++) {
+
+            output += patientRecords[i] + "\n";
+        }
+
+        displayArea.setText(output);
+
+        statusLabel.setText(
+                "Status: " + patientCount
+                + " patient(s) registered."
+        );
+
+        statusLabel.setForeground(Color.BLUE);
+    }
+
+    // =========================================================
+    // CLEAR FORM
+    // =========================================================
+    public void clearForm() {
+
+        patientIdField.setText("");
+        patientNameField.setText("");
+        ageField.setText("");
+        phoneField.setText("");
+
+        categoryChoice.select("Select Category");
+        doctorChoice.select("Select Doctor");
+
+        symptomsArea.setText("");
+        treatmentArea.setText("");
+
+        emergencyConsent.setState(false);
+        ambulanceRequired.setState(false);
+
+        priorityLabel.setText(
+                "Priority: NOT ASSIGNED"
+        );
+
+        priorityLabel.setForeground(Color.GRAY);
+
+        alertLabel.setText(
+                "ALERT: No critical patient"
+        );
+
+        alertLabel.setForeground(Color.GRAY);
+
+        statusLabel.setText(
+                "Status: Form cleared."
+        );
+
+        statusLabel.setForeground(Color.BLUE);
+
+        displayArea.setText("");
+
+        patientIdField.requestFocus();
+    }
+
+    // =========================================================
+    // ERROR DISPLAY
+    // =========================================================
+    public void showError(String message) {
+
+        statusLabel.setText(
+                "ERROR: " + message
+        );
+
+        statusLabel.setForeground(Color.RED);
+
+        displayArea.setText(
+                "!!! VALIDATION ERROR !!!\n\n"
+                + message
+        );
+    }
+}
