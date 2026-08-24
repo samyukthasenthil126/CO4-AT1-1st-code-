@@ -1,0 +1,442 @@
+import java.applet.Applet;
+import java.awt.*;
+import java.awt.event.*;
+
+/*
+<applet code="BankingTransactionApplet.class" width="700" height="500">
+</applet>
+*/
+
+public class BankingTransactionApplet extends Applet
+        implements ActionListener, ItemListener {
+
+    // -----------------------------
+    // Account details
+    // -----------------------------
+    double balance = 10000.00;
+
+    // -----------------------------
+    // Main components
+    // -----------------------------
+    Choice transactionMenu;
+    Label statusLabel;
+    Label balanceLabel;
+
+    Panel cardPanel;
+    CardLayout cardLayout;
+
+    // -----------------------------
+    // Deposit components
+    // -----------------------------
+    TextField depositAmount;
+    Button depositButton;
+
+    // -----------------------------
+    // Withdrawal components
+    // -----------------------------
+    TextField withdrawalAmount;
+    Button withdrawalButton;
+
+    // -----------------------------
+    // Transfer components
+    // -----------------------------
+    TextField transferAccount;
+    TextField transferAmount;
+    Button transferButton;
+
+    // -----------------------------
+    // Balance inquiry components
+    // -----------------------------
+    Button balanceButton;
+
+    // -----------------------------
+    // Initialization
+    // -----------------------------
+    public void init() {
+
+        setBackground(Color.WHITE);
+        setLayout(new BorderLayout(10, 10));
+
+        // ==========================================
+        // TOP PANEL - Transaction menu
+        // ==========================================
+        Panel topPanel = new Panel(new FlowLayout(FlowLayout.CENTER));
+
+        Label menuLabel = new Label("Select Transaction: ");
+
+        transactionMenu = new Choice();
+        transactionMenu.add("Deposit");
+        transactionMenu.add("Withdrawal");
+        transactionMenu.add("Fund Transfer");
+        transactionMenu.add("Balance Inquiry");
+
+        transactionMenu.addItemListener(this);
+
+        topPanel.add(menuLabel);
+        topPanel.add(transactionMenu);
+
+        add(topPanel, BorderLayout.NORTH);
+
+        // ==========================================
+        // CARD PANEL
+        // ==========================================
+        cardLayout = new CardLayout();
+        cardPanel = new Panel(cardLayout);
+
+        // Create all transaction panels
+        createDepositPanel();
+        createWithdrawalPanel();
+        createTransferPanel();
+        createBalancePanel();
+
+        add(cardPanel, BorderLayout.CENTER);
+
+        // ==========================================
+        // BOTTOM STATUS PANEL
+        // ==========================================
+        Panel bottomPanel = new Panel(new GridLayout(2, 1));
+
+        statusLabel = new Label(
+                "Status: Ready for transaction.",
+                Label.CENTER
+        );
+
+        balanceLabel = new Label(
+                "Current Balance: Rs. " + format(balance),
+                Label.CENTER
+        );
+
+        statusLabel.setForeground(Color.BLUE);
+        balanceLabel.setForeground(new Color(0, 128, 0));
+
+        bottomPanel.add(statusLabel);
+        bottomPanel.add(balanceLabel);
+
+        add(bottomPanel, BorderLayout.SOUTH);
+
+        // Display deposit panel initially
+        cardLayout.show(cardPanel, "Deposit");
+    }
+
+    // =========================================================
+    // DEPOSIT PANEL
+    // =========================================================
+    public void createDepositPanel() {
+
+        Panel panel = new Panel(new GridLayout(4, 2, 10, 10));
+
+        Label title = new Label("DEPOSIT", Label.CENTER);
+        Label amountLabel = new Label("Enter Amount:");
+        depositAmount = new TextField();
+
+        depositButton = new Button("Deposit");
+        depositButton.addActionListener(this);
+
+        panel.add(title);
+        panel.add(new Label(""));
+
+        panel.add(amountLabel);
+        panel.add(depositAmount);
+
+        panel.add(new Label(""));
+        panel.add(depositButton);
+
+        panel.add(new Label(""));
+        panel.add(new Label(""));
+
+        cardPanel.add(panel, "Deposit");
+    }
+
+    // =========================================================
+    // WITHDRAWAL PANEL
+    // =========================================================
+    public void createWithdrawalPanel() {
+
+        Panel panel = new Panel(new GridLayout(4, 2, 10, 10));
+
+        Label title = new Label("WITHDRAWAL", Label.CENTER);
+        Label amountLabel = new Label("Enter Amount:");
+        withdrawalAmount = new TextField();
+
+        withdrawalButton = new Button("Withdraw");
+        withdrawalButton.addActionListener(this);
+
+        panel.add(title);
+        panel.add(new Label(""));
+
+        panel.add(amountLabel);
+        panel.add(withdrawalAmount);
+
+        panel.add(new Label(""));
+        panel.add(withdrawalButton);
+
+        panel.add(new Label(""));
+        panel.add(new Label(""));
+
+        cardPanel.add(panel, "Withdrawal");
+    }
+
+    // =========================================================
+    // FUND TRANSFER PANEL
+    // =========================================================
+    public void createTransferPanel() {
+
+        Panel panel = new Panel(new GridLayout(5, 2, 10, 10));
+
+        Label title = new Label("FUND TRANSFER", Label.CENTER);
+
+        Label accountLabel = new Label("Beneficiary Account:");
+        transferAccount = new TextField();
+
+        Label amountLabel = new Label("Transfer Amount:");
+        transferAmount = new TextField();
+
+        transferButton = new Button("Transfer");
+        transferButton.addActionListener(this);
+
+        panel.add(title);
+        panel.add(new Label(""));
+
+        panel.add(accountLabel);
+        panel.add(transferAccount);
+
+        panel.add(amountLabel);
+        panel.add(transferAmount);
+
+        panel.add(new Label(""));
+        panel.add(transferButton);
+
+        panel.add(new Label(""));
+        panel.add(new Label(""));
+
+        cardPanel.add(panel, "Fund Transfer");
+    }
+
+    // =========================================================
+    // BALANCE INQUIRY PANEL
+    // =========================================================
+    public void createBalancePanel() {
+
+        Panel panel = new Panel(new GridLayout(4, 1, 10, 10));
+
+        Label title = new Label("BALANCE INQUIRY", Label.CENTER);
+
+        balanceButton = new Button("Check Balance");
+        balanceButton.addActionListener(this);
+
+        panel.add(title);
+        panel.add(balanceButton);
+        panel.add(new Label(""));
+        panel.add(new Label(""));
+
+        cardPanel.add(panel, "Balance Inquiry");
+    }
+
+    // =========================================================
+    // ITEM EVENT - Transaction Menu
+    // =========================================================
+    public void itemStateChanged(ItemEvent e) {
+
+        String selected = transactionMenu.getSelectedItem();
+
+        cardLayout.show(cardPanel, selected);
+
+        statusLabel.setText(
+                "Status: " + selected + " selected."
+        );
+    }
+
+    // =========================================================
+    // ACTION EVENT
+    // =========================================================
+    public void actionPerformed(ActionEvent e) {
+
+        // -----------------------------
+        // DEPOSIT
+        // -----------------------------
+        if (e.getSource() == depositButton) {
+
+            String input = depositAmount.getText().trim();
+
+            if (input.length() == 0) {
+                showError("Please enter the deposit amount.");
+                return;
+            }
+
+            try {
+
+                double amount = Double.parseDouble(input);
+
+                if (amount <= 0) {
+                    showError("Invalid amount. Amount must be greater than zero.");
+                    return;
+                }
+
+                balance = balance + amount;
+
+                updateBalance();
+
+                statusLabel.setText(
+                        "Status: Deposit of Rs. "
+                        + format(amount)
+                        + " successful."
+                );
+
+                statusLabel.setForeground(new Color(0, 128, 0));
+
+                depositAmount.setText("");
+
+            } catch (NumberFormatException ex) {
+
+                showError("Invalid amount. Please enter a numeric value.");
+            }
+        }
+
+        // -----------------------------
+        // WITHDRAWAL
+        // -----------------------------
+        else if (e.getSource() == withdrawalButton) {
+
+            String input = withdrawalAmount.getText().trim();
+
+            if (input.length() == 0) {
+                showError("Please enter the withdrawal amount.");
+                return;
+            }
+
+            try {
+
+                double amount = Double.parseDouble(input);
+
+                if (amount <= 0) {
+                    showError("Invalid amount. Amount must be greater than zero.");
+                    return;
+                }
+
+                if (amount > balance) {
+                    showError("Insufficient balance.");
+                    return;
+                }
+
+                balance = balance - amount;
+
+                updateBalance();
+
+                statusLabel.setText(
+                        "Status: Withdrawal of Rs. "
+                        + format(amount)
+                        + " successful."
+                );
+
+                statusLabel.setForeground(new Color(0, 128, 0));
+
+                withdrawalAmount.setText("");
+
+            } catch (NumberFormatException ex) {
+
+                showError("Invalid amount. Please enter a numeric value.");
+            }
+        }
+
+        // -----------------------------
+        // FUND TRANSFER
+        // -----------------------------
+        else if (e.getSource() == transferButton) {
+
+            String account = transferAccount.getText().trim();
+            String input = transferAmount.getText().trim();
+
+            if (account.length() == 0 || input.length() == 0) {
+
+                showError(
+                        "Incomplete input. Enter account number and amount."
+                );
+
+                return;
+            }
+
+            try {
+
+                double amount = Double.parseDouble(input);
+
+                if (amount <= 0) {
+
+                    showError(
+                            "Invalid amount. Amount must be greater than zero."
+                    );
+
+                    return;
+                }
+
+                if (amount > balance) {
+
+                    showError("Insufficient balance for fund transfer.");
+
+                    return;
+                }
+
+                balance = balance - amount;
+
+                updateBalance();
+
+                statusLabel.setText(
+                        "Status: Rs. "
+                        + format(amount)
+                        + " transferred successfully to account "
+                        + account
+                        + "."
+                );
+
+                statusLabel.setForeground(new Color(0, 128, 0));
+
+                transferAccount.setText("");
+                transferAmount.setText("");
+
+            } catch (NumberFormatException ex) {
+
+                showError("Invalid transfer amount.");
+            }
+        }
+
+        // -----------------------------
+        // BALANCE INQUIRY
+        // -----------------------------
+        else if (e.getSource() == balanceButton) {
+
+            updateBalance();
+
+            statusLabel.setText(
+                    "Status: Balance inquiry successful."
+            );
+
+            statusLabel.setForeground(Color.BLUE);
+        }
+    }
+
+    // =========================================================
+    // UPDATE BALANCE
+    // =========================================================
+    public void updateBalance() {
+
+        balanceLabel.setText(
+                "Current Balance: Rs. " + format(balance)
+        );
+    }
+
+    // =========================================================
+    // ERROR MESSAGE
+    // =========================================================
+    public void showError(String message) {
+
+        statusLabel.setText("Status: " + message);
+        statusLabel.setForeground(Color.RED);
+    }
+
+    // =========================================================
+    // FORMAT MONEY
+    // =========================================================
+    public String format(double amount) {
+
+        return String.format("%.2f", amount);
+    }
+}
